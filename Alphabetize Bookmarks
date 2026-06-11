@@ -1,0 +1,22 @@
+(async function() {
+  async function sortFolder(folderId) {
+    const children = await new Promise(r => chrome.bookmarks.getChildren(folderId, r));
+    // Sort: folders first, then bookmarks, both alphabetically
+    const sorted = [...children].sort((a, b) => {
+      const aIsFolder = !a.url, bIsFolder = !b.url;
+      if (aIsFolder !== bIsFolder) return aIsFolder ? -1 : 1;
+      return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+    });
+    const orderedIds = sorted.map(n => n.id);
+    await new Promise(r => chrome.bookmarks.reorder(folderId, orderedIds, r));
+    // Recurse into subfolders
+    for (const child of sorted.filter(c => !c.url)) {
+      await sortFolder(child.id);
+    }
+  }
+
+  // Sort Bookmarks Bar (id: "1") and Other Bookmarks (id: "2")
+  await sortFolder("1");
+  await sortFolder("2");
+  console.log("✅ All bookmarks sorted alphabetically (folders first).");
+})();
